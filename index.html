@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>111移动端Picker简洁文字选中方案</title>
+    <title>移动端Picker简洁文字选中方案</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@2.12/lib/index.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vant@2.12/lib/vant.min.js"></script>
@@ -13,7 +13,7 @@
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
-            /* 关键优化：允许垂直滚动和触摸操作 */
+            /* 关键修复：允许垂直滚动和触摸操作 */
             touch-action: pan-y manipulation;
         }
 
@@ -26,8 +26,6 @@
             margin: 0 auto;
             min-height: 100vh;
             line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
 
         .header {
@@ -170,7 +168,6 @@
             flex: 1;
             height: 320px;
             overflow: hidden;
-            /* 关键优化：允许触摸事件穿透 */
             pointer-events: auto;
         }
 
@@ -178,13 +175,12 @@
             position: relative;
             height: 100%;
             overflow: hidden;
-            /* 关键优化：明确触摸行为 */
+            /* 明确允许垂直滚动 */
             touch-action: pan-y;
         }
 
         .option-list {
             position: relative;
-            transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
             will-change: transform;
         }
 
@@ -202,7 +198,6 @@
             white-space: nowrap;
             line-height: 1.5;
             height: 52px;
-            /* 关键优化：确保可点击 */
             cursor: pointer;
             user-select: none;
         }
@@ -327,14 +322,6 @@
                 min-width: 100%;
             }
         }
-
-        .option-list {
-            will-change: transform;
-        }
-
-        .option-item {
-            will-change: transform, height;
-        }
     </style>
 </head>
 <body>
@@ -397,23 +384,28 @@
     >
         <div class="custom-picker">
             <div class="picker-header">
-                <button class="picker-action cancel" @click="showPicker = false" @touchstart.prevent="showPicker = false">取消</button>
+                <button class="picker-action cancel"
+                        @click="showPicker = false"
+                        @touchstart.stop="showPicker = false">取消</button>
                 <div class="picker-title">请滚动选择 ({{ options.length }})</div>
-                <button class="picker-action confirm" @click="confirmSelection" @touchstart.prevent="confirmSelection">确定</button>
+                <button class="picker-action confirm"
+                        @click="confirmSelection"
+                        @touchstart.stop="confirmSelection">确定</button>
             </div>
 
             <div class="scroll-wrapper">
                 <div
                         class="scroll-container"
                         ref="scrollContainer"
-                        @touchstart.prevent="onTouchStart"
-                        @touchmove.prevent="onTouchMove"
+                        @touchstart.stop="onTouchStart"
+                        @touchmove.stop="onTouchMove"
                         @touchend="onTouchEnd"
                         @touchcancel="onTouchEnd"
                 >
                     <div
                             class="option-list"
                             :style="{ transform: `translateY(${translateY}px)` }"
+                            ref="optionList"
                     >
                         <div class="empty-padding"></div>
 
@@ -423,8 +415,8 @@
                                 class="option-item"
                                 :class="{ selected: index === selectedIndex }"
                                 :ref="`option_${index}`"
-                                @click="scrollToIndex(index)"
-                                @touchstart.prevent="scrollToIndex(index)"
+                                @click.stop="scrollToIndex(index)"
+                                @touchstart.stop="scrollToIndex(index)"
                         >
                             <span class="option-content">{{ item }}</span>
                         </div>
@@ -459,28 +451,27 @@
                 lastTime: 0,
                 containerHeight: 320,
                 optionHeights: [],
-                centerY: 0,
+                centerY: 0
             };
         },
         computed: {
             maxTranslate() {
                 if (this.optionHeights.length === 0) return 0;
+                // 计算所有选项总高度
                 const totalHeight = this.optionHeights.reduce((sum, height) => sum + height, 0);
+                // 计算最大可滚动距离，确保最后一项能完全显示
                 return Math.max(0, totalHeight + 200 - this.containerHeight);
             }
         },
         watch: {
             showPicker(val) {
                 if (val) {
-                    // 优化：增加延迟确保DOM渲染完成（移动端渲染较慢）
+                    // 增加延迟确保DOM渲染完成（移动端渲染较慢）
                     setTimeout(() => {
                         this.$nextTick(() => {
-                            this.containerHeight = this.$refs.scrollContainer.clientHeight;
-                            this.centerY = this.containerHeight / 2;
-                            this.calculateOptionHeights();
-                            this.scrollToIndex(this.selectedIndex, false);
+                            this.initScrollContainer();
                         });
-                    }, 200); // 延长延迟至200ms，适配移动端
+                    }, 300);
                 }
             }
         },
@@ -488,6 +479,19 @@
             this.generateOptions();
         },
         methods: {
+            // 初始化滚动容器参数
+            initScrollContainer() {
+                const container = this.$refs.scrollContainer;
+                if (container) {
+                    this.containerHeight = container.clientHeight;
+                    this.centerY = this.containerHeight / 2;
+                    // 计算选项高度后再滚动到选中项
+                    this.calculateOptionHeights(() => {
+                        this.scrollToIndex(this.selectedIndex, false);
+                    });
+                }
+            },
+
             generateOptions() {
                 const prefixes = ['项目', '任务', '产品', '方案', '服务', '功能'];
                 const adjectives = ['重要的', '紧急的', '创新的', '优化的', '高效的', '智能的'];
@@ -518,29 +522,40 @@
                 this.selectedValue = this.options[0];
             },
 
-            calculateOptionHeights() {
+            // 计算所有选项的高度，使用回调确保计算完成
+            calculateOptionHeights(callback) {
                 this.optionHeights = [];
                 this.$nextTick(() => {
+                    let count = 0;
                     for (let i = 0; i < this.options.length; i++) {
                         const el = this.$refs[`option_${i}`]?.[0];
                         if (el) {
-                            // 优化：更稳定的高度计算方式
+                            // 临时设置为选中状态以获取实际高度
                             const wasSelected = el.classList.contains('selected');
                             el.classList.add('selected');
-                            // 强制重绘（关键优化）
+                            // 强制重绘
                             void el.offsetWidth;
+                            // 使用getBoundingClientRect获取更准确的高度
                             const height = el.getBoundingClientRect().height;
                             this.optionHeights.push(height);
                             if (!wasSelected) {
                                 el.classList.remove('selected');
                             }
                         } else {
+                            // 默认高度
                             this.optionHeights.push(52);
+                        }
+                        count++;
+
+                        // 所有选项计算完成后执行回调
+                        if (count === this.options.length && callback) {
+                            callback();
                         }
                     }
                 });
             },
 
+            // 获取指定选项的位置
             getOptionPosition(index) {
                 let position = 0;
                 for (let i = 0; i < index; i++) {
@@ -549,14 +564,23 @@
                 return position;
             },
 
+            // 滚动到指定索引
             scrollToIndex(index, animate = true) {
                 if (index < 0 || index >= this.options.length) return;
 
-                this.calculateOptionHeights();
+                // 确保高度已计算
+                if (this.optionHeights.length === 0) {
+                    this.calculateOptionHeights(() => {
+                        this.scrollToIndex(index, animate);
+                    });
+                    return;
+                }
 
                 const optionPosition = this.getOptionPosition(index);
                 const optionHeight = this.optionHeights[index] || 52;
+                // 计算目标位置：使选中项中心与容器中心对齐
                 const targetY = -(optionPosition + optionHeight/2 - this.centerY);
+                // 边界检查
                 const boundedY = Math.max(-this.maxTranslate, Math.min(150, targetY));
 
                 if (animate) {
@@ -567,6 +591,7 @@
                 }
             },
 
+            // 动画滚动到目标位置
             animateScroll(targetY) {
                 const startY = this.translateY;
                 const startTime = Date.now();
@@ -590,9 +615,9 @@
                 requestAnimationFrame(animate);
             },
 
+            // 更新选中的索引
             updateSelectedIndex() {
                 const currentPosition = -this.translateY;
-
                 let accumulatedHeight = 0;
                 let closestIndex = 0;
                 let minDistance = Infinity;
@@ -615,10 +640,12 @@
                 }
             },
 
+            // 缓动函数
             easeOutCubic(t) {
                 return 1 - Math.pow(1 - t, 3);
             },
 
+            // 触摸开始事件
             onTouchStart(e) {
                 this.isDragging = true;
                 this.startY = e.touches[0].clientY;
@@ -628,15 +655,15 @@
                 this.lastTime = Date.now();
             },
 
+            // 触摸移动事件
             onTouchMove(e) {
                 if (!this.isDragging) return;
 
                 const currentY = e.touches[0].clientY;
                 const deltaY = currentY - this.startY;
-
                 let newTranslateY = this.startTranslate + deltaY;
 
-                // 优化边界弹性效果，避免过度限制
+                // 边界限制（带弹性效果）
                 if (newTranslateY > 150) {
                     newTranslateY = 150 + (newTranslateY - 150) * 0.2;
                 } else if (newTranslateY < -this.maxTranslate) {
@@ -647,7 +674,7 @@
                 this.translateY = newTranslateY;
                 this.updateSelectedIndex();
 
-                // 优化速度计算，增加时间阈值避免异常值
+                // 计算速度
                 const now = Date.now();
                 const deltaTime = now - this.lastTime;
                 if (deltaTime > 10) { // 忽略过快的连续事件
@@ -658,28 +685,32 @@
                 }
             },
 
+            // 触摸结束事件
             onTouchEnd() {
                 if (!this.isDragging) return;
 
                 this.isDragging = false;
 
-                // 优化惯性滚动触发条件
-                if (Math.abs(this.velocity) > 0.08) { // 降低触发阈值
-                    const momentumRatio = 12; // 减小惯性强度，避免过度滚动
+                // 惯性滚动
+                if (Math.abs(this.velocity) > 0.08) {
+                    const momentumRatio = 12;
                     const momentumDistance = this.velocity * momentumRatio;
                     let targetY = this.translateY + momentumDistance;
                     targetY = Math.max(-this.maxTranslate, Math.min(150, targetY));
                     this.animateScroll(targetY);
                 } else {
+                    // 直接滚动到最接近的选项
                     this.scrollToIndex(this.selectedIndex);
                 }
             },
 
+            // 确认选择
             confirmSelection() {
                 this.selectedValue = this.options[this.selectedIndex];
                 this.showPicker = false;
             },
 
+            // 重置选择
             resetSelection() {
                 this.selectedIndex = 0;
                 this.selectedValue = this.options[0];
