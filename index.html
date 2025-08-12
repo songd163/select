@@ -13,7 +13,8 @@
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+            /* 关键优化：允许垂直滚动和触摸操作 */
+            touch-action: pan-y manipulation;
         }
 
         body {
@@ -169,17 +170,22 @@
             flex: 1;
             height: 320px;
             overflow: hidden;
+            /* 关键优化：允许触摸事件穿透 */
+            pointer-events: auto;
         }
 
         .scroll-container {
             position: relative;
             height: 100%;
             overflow: hidden;
+            /* 关键优化：明确触摸行为 */
+            touch-action: pan-y;
         }
 
         .option-list {
             position: relative;
             transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+            will-change: transform;
         }
 
         .option-item {
@@ -196,9 +202,11 @@
             white-space: nowrap;
             line-height: 1.5;
             height: 52px;
+            /* 关键优化：确保可点击 */
+            cursor: pointer;
+            user-select: none;
         }
 
-        /* 增强的选中项样式 - 更明显的视觉效果 */
         .option-item.selected {
             color: #1989fa;
             font-weight: 600;
@@ -264,7 +272,6 @@
             border: none;
         }
 
-        /* 顶部填充高度调整，确保所有选项可选中 */
         .empty-padding {
             height: 100px;
         }
@@ -275,7 +282,6 @@
             text-align: center;
         }
 
-        /* 移动端优化 */
         @media (max-width: 480px) {
             body {
                 padding: 15px;
@@ -322,7 +328,6 @@
             }
         }
 
-        /* 高性能渲染优化 */
         .option-list {
             will-change: transform;
         }
@@ -392,17 +397,17 @@
     >
         <div class="custom-picker">
             <div class="picker-header">
-                <button class="picker-action cancel" @click="showPicker = false">取消</button>
+                <button class="picker-action cancel" @click="showPicker = false" @touchstart.prevent="showPicker = false">取消</button>
                 <div class="picker-title">请滚动选择 ({{ options.length }})</div>
-                <button class="picker-action confirm" @click="confirmSelection">确定</button>
+                <button class="picker-action confirm" @click="confirmSelection" @touchstart.prevent="confirmSelection">确定</button>
             </div>
 
             <div class="scroll-wrapper">
                 <div
                         class="scroll-container"
                         ref="scrollContainer"
-                        @touchstart="onTouchStart"
-                        @touchmove="onTouchMove"
+                        @touchstart.prevent="onTouchStart"
+                        @touchmove.prevent="onTouchMove"
                         @touchend="onTouchEnd"
                         @touchcancel="onTouchEnd"
                 >
@@ -410,7 +415,6 @@
                             class="option-list"
                             :style="{ transform: `translateY(${translateY}px)` }"
                     >
-                        <!-- 顶部填充区域 -->
                         <div class="empty-padding"></div>
 
                         <div
@@ -420,11 +424,11 @@
                                 :class="{ selected: index === selectedIndex }"
                                 :ref="`option_${index}`"
                                 @click="scrollToIndex(index)"
+                                @touchstart.prevent="scrollToIndex(index)"
                         >
                             <span class="option-content">{{ item }}</span>
                         </div>
 
-                        <!-- 底部填充区域 -->
                         <div class="empty-padding"></div>
                     </div>
                 </div>
@@ -455,24 +459,20 @@
                 lastTime: 0,
                 containerHeight: 320,
                 optionHeights: [],
-                centerY: 0, // 容器中心点Y坐标
+                centerY: 0,
             };
         },
         computed: {
             maxTranslate() {
                 if (this.optionHeights.length === 0) return 0;
-
-                // 计算总高度
                 const totalHeight = this.optionHeights.reduce((sum, height) => sum + height, 0);
-
-                // 调整填充区域计算，确保可以滚动到所有选项
                 return Math.max(0, totalHeight + 200 - this.containerHeight);
             }
         },
         watch: {
             showPicker(val) {
                 if (val) {
-                    // 使用setTimeout确保DOM已完全渲染
+                    // 优化：增加延迟确保DOM渲染完成（移动端渲染较慢）
                     setTimeout(() => {
                         this.$nextTick(() => {
                             this.containerHeight = this.$refs.scrollContainer.clientHeight;
@@ -480,7 +480,7 @@
                             this.calculateOptionHeights();
                             this.scrollToIndex(this.selectedIndex, false);
                         });
-                    }, 100);
+                    }, 200); // 延长延迟至200ms，适配移动端
                 }
             }
         },
@@ -502,7 +502,6 @@
                     const noun = nouns[Math.floor(Math.random() * nouns.length)];
                     const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
 
-                    // 生成长度不同的选项
                     let lengthModifier = '';
                     const lengthType = i % 5;
                     if (lengthType === 0) {
@@ -521,23 +520,21 @@
 
             calculateOptionHeights() {
                 this.optionHeights = [];
-                // 确保DOM已更新
                 this.$nextTick(() => {
                     for (let i = 0; i < this.options.length; i++) {
                         const el = this.$refs[`option_${i}`]?.[0];
                         if (el) {
-                            // 临时设置为选中状态以获取实际高度
+                            // 优化：更稳定的高度计算方式
                             const wasSelected = el.classList.contains('selected');
                             el.classList.add('selected');
-                            // 强制重绘
-                            el.offsetHeight;
-                            const height = el.offsetHeight;
+                            // 强制重绘（关键优化）
+                            void el.offsetWidth;
+                            const height = el.getBoundingClientRect().height;
                             this.optionHeights.push(height);
                             if (!wasSelected) {
                                 el.classList.remove('selected');
                             }
                         } else {
-                            // 默认高度
                             this.optionHeights.push(52);
                         }
                     }
@@ -555,16 +552,11 @@
             scrollToIndex(index, animate = true) {
                 if (index < 0 || index >= this.options.length) return;
 
-                // 强制更新高度信息
                 this.calculateOptionHeights();
 
                 const optionPosition = this.getOptionPosition(index);
                 const optionHeight = this.optionHeights[index] || 52;
-
-                // 计算目标位置：使选中项中心与容器中心完全对齐
                 const targetY = -(optionPosition + optionHeight/2 - this.centerY);
-
-                // 边界检查 - 调整边界值，确保所有选项可以选中
                 const boundedY = Math.max(-this.maxTranslate, Math.min(150, targetY));
 
                 if (animate) {
@@ -583,11 +575,8 @@
                 const animate = () => {
                     const now = Date.now();
                     const progress = Math.min(1, (now - startTime) / duration);
-
                     const easeProgress = this.easeOutCubic(progress);
                     this.translateY = startY + (targetY - startY) * easeProgress;
-
-                    // 更新选中索引
                     this.updateSelectedIndex();
 
                     if (progress < 1) {
@@ -601,7 +590,6 @@
                 requestAnimationFrame(animate);
             },
 
-            // 优化选中项计算，确保所有选项都能被选中
             updateSelectedIndex() {
                 const currentPosition = -this.translateY;
 
@@ -609,7 +597,6 @@
                 let closestIndex = 0;
                 let minDistance = Infinity;
 
-                // 遍历所有选项，找到最接近容器中心的选项
                 for (let i = 0; i < this.options.length; i++) {
                     const optionHeight = this.optionHeights[i] || 52;
                     const optionCenter = accumulatedHeight + optionHeight / 2;
@@ -623,7 +610,6 @@
                     accumulatedHeight += optionHeight;
                 }
 
-                // 移除前几项的特殊限制，使用统一的计算方式
                 if (closestIndex !== this.selectedIndex) {
                     this.selectedIndex = closestIndex;
                 }
@@ -645,15 +631,13 @@
             onTouchMove(e) {
                 if (!this.isDragging) return;
 
-                e.preventDefault();
-
                 const currentY = e.touches[0].clientY;
                 const deltaY = currentY - this.startY;
 
                 let newTranslateY = this.startTranslate + deltaY;
 
-                // 边界限制（带弹性效果）
-                if (newTranslateY > 150) { // 增加顶部弹性区域
+                // 优化边界弹性效果，避免过度限制
+                if (newTranslateY > 150) {
                     newTranslateY = 150 + (newTranslateY - 150) * 0.2;
                 } else if (newTranslateY < -this.maxTranslate) {
                     const overflow = -this.maxTranslate - newTranslateY;
@@ -663,11 +647,10 @@
                 this.translateY = newTranslateY;
                 this.updateSelectedIndex();
 
-                // 计算速度
+                // 优化速度计算，增加时间阈值避免异常值
                 const now = Date.now();
                 const deltaTime = now - this.lastTime;
-
-                if (deltaTime > 0) {
+                if (deltaTime > 10) { // 忽略过快的连续事件
                     const deltaY = currentY - this.lastY;
                     this.velocity = deltaY / deltaTime;
                     this.lastY = currentY;
@@ -680,19 +663,14 @@
 
                 this.isDragging = false;
 
-                // 惯性滚动
-                if (Math.abs(this.velocity) > 0.05) {
-                    const momentumRatio = 15;
+                // 优化惯性滚动触发条件
+                if (Math.abs(this.velocity) > 0.08) { // 降低触发阈值
+                    const momentumRatio = 12; // 减小惯性强度，避免过度滚动
                     const momentumDistance = this.velocity * momentumRatio;
                     let targetY = this.translateY + momentumDistance;
-
-                    // 限制在边界内
                     targetY = Math.max(-this.maxTranslate, Math.min(150, targetY));
-
-                    // 滚动到最近的选项
                     this.animateScroll(targetY);
                 } else {
-                    // 直接滚动到最接近的选项
                     this.scrollToIndex(this.selectedIndex);
                 }
             },
