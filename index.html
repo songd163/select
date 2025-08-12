@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>移动端Picker简洁文字选中方案</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@2.12/lib/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vant@2.12/lib/vant.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef5fb 100%);
+            color: #333;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .header {
+            text-align: center;
+            padding: 25px 0 30px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1989fa, #3296fa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            color: #7d7e80;
+            font-size: 15px;
+            max-width: 90%;
+            margin: 0 auto;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .demo-section {
+            padding: 25px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .demo-title {
+            font-size: 18px;
+            margin-bottom: 18px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .demo-title i {
+            color: #1989fa;
+            font-size: 20px;
+            margin-right: 12px;
+        }
+
+        .description {
+            background: linear-gradient(135deg, #f8f9ff, #f0f7ff);
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 15px;
+            color: #555;
+            margin: 20px 0;
+            line-height: 1.7;
+        }
+
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .feature {
+            background: rgba(25, 137, 250, 0.08);
+            border-radius: 12px;
+            padding: 12px 15px;
+            flex: 1;
+            min-width: 140px;
+            text-align: center;
+            font-size: 14px;
+            color: #1989fa;
+            font-weight: 500;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .custom-picker {
+            width: 100%;
+            background: white;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 25px;
+            background: white;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .picker-title {
+            font-weight: 600;
+            font-size: 17px;
+            color: #2c3e50;
+        }
+
+        .picker-action {
+            font-size: 16px;
+            background: none;
+            border: none;
+            padding: 6px 18px;
+            color: #1989fa;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .picker-action.cancel {
+            color: #7d7e80;
+        }
+
+        .picker-action:hover {
+            background: rgba(25, 137, 250, 0.08);
+        }
+
+        .scroll-wrapper {
+            position: relative;
+            flex: 1;
+            height: 320px;
+            overflow: hidden;
+        }
+
+        .scroll-container {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .option-list {
+            position: relative;
+            transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 16px;
+            padding: 0 25px;
+            color: #7d7e80;
+            transition: all 0.4s ease;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.5;
+            height: 52px;
+        }
+
+        /* 增强的选中项样式 - 更明显的视觉效果 */
+        .option-item.selected {
+            color: #1989fa;
+            font-weight: 600;
+            white-space: normal;
+            overflow: visible;
+            height: auto;
+            min-height: 52px;
+            padding: 15px 25px;
+            text-overflow: clip;
+            position: relative;
+            z-index: 3;
+            background: rgba(25, 137, 250, 0.15);
+            border-radius: 12px;
+            margin: 8px 15px;
+            animation: pulse 0.6s ease;
+            box-shadow: 0 4px 12px rgba(25, 137, 250, 0.2);
+            transform: scale(1.02);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1.02); }
+        }
+
+        .selected-value {
+            background: linear-gradient(135deg, #1989fa, #3296fa);
+            color: white;
+            padding: 18px 22px;
+            border-radius: 18px;
+            margin-top: 25px;
+            font-size: 17px;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            word-break: break-word;
+            line-height: 1.7;
+            box-shadow: 0 6px 18px rgba(25, 137, 250, 0.3);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #7d7e80;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .van-button {
+            flex: 1;
+            border-radius: 12px;
+            height: 50px;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .van-button--primary {
+            background: linear-gradient(to right, #1989fa, #3296fa);
+            border: none;
+        }
+
+        /* 顶部填充高度调整，确保所有选项可选中 */
+        .empty-padding {
+            height: 100px;
+        }
+
+        .option-content {
+            display: inline-block;
+            max-width: 100%;
+            text-align: center;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+
+            .header {
+                padding: 20px 0;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .demo-section {
+                padding: 20px;
+            }
+
+            .scroll-wrapper {
+                height: 300px;
+            }
+
+            .option-item {
+                padding: 0 20px;
+                font-size: 15px;
+                height: 50px;
+            }
+
+            .option-item.selected {
+                min-height: 50px;
+                padding: 12px 20px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .van-button {
+                width: 100%;
+            }
+
+            .feature {
+                min-width: 100%;
+            }
+        }
+
+        /* 高性能渲染优化 */
+        .option-list {
+            will-change: transform;
+        }
+
+        .option-item {
+            will-change: transform, height;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1>移动端Picker简洁文字选中方案</h1>
+        <p class="subtitle">所有选项均可选中，无选中区域指示器</p>
+    </div>
+
+    <div class="container">
+        <div class="demo-section">
+            <div class="demo-title">
+                <i class="van-icon van-icon-success"></i>
+                <span>方案核心特点</span>
+            </div>
+            <div class="description">
+                <p>本方案修复了选项无法选中的问题，移除了选中区域指示器：</p>
+                <ul style="padding-left: 24px; margin-top: 10px;">
+                    <li><strong>全选项可选</strong> - 所有选项均可正常选中，包括前几项</li>
+                    <li><strong>无区域指示器</strong> - 移除了选中区域高亮，界面更简洁</li>
+                    <li><strong>增强高亮</strong> - 选中项有更明显的视觉区分</li>
+                    <li><strong>精准定位</strong> - 选中项自动居中显示</li>
+                </ul>
+            </div>
+
+            <div class="features">
+                <div class="feature">全选项可选</div>
+                <div class="feature">无区域指示器</div>
+                <div class="feature">选中高亮</div>
+                <div class="feature">精准居中</div>
+            </div>
+
+            <van-button type="primary" block @click="showPicker = true">打开选择器体验</van-button>
+
+            <div class="btn-group">
+                <van-button type="default" block @click="resetSelection">重置选择</van-button>
+                <van-button type="info" block @click="generateOptions">生成新数据</van-button>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">
+                <i class="van-icon van-icon-gem"></i>
+                <span>当前选中项</span>
+            </div>
+
+            <div class="selected-value">
+                {{ selectedValue || '请滚动选择器选择一个选项' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义选择器弹窗 -->
+    <van-popup
+            v-model="showPicker"
+            position="bottom"
+            :style="{ height: '75%' }"
+            round
+            get-container="body"
+    >
+        <div class="custom-picker">
+            <div class="picker-header">
+                <button class="picker-action cancel" @click="showPicker = false">取消</button>
+                <div class="picker-title">请滚动选择 ({{ options.length }})</div>
+                <button class="picker-action confirm" @click="confirmSelection">确定</button>
+            </div>
+
+            <div class="scroll-wrapper">
+                <div
+                        class="scroll-container"
+                        ref="scrollContainer"
+                        @touchstart="onTouchStart"
+                        @touchmove="onTouchMove"
+                        @touchend="onTouchEnd"
+                        @touchcancel="onTouchEnd"
+                >
+                    <div
+                            class="option-list"
+                            :style="{ transform: `translateY(${translateY}px)` }"
+                    >
+                        <!-- 顶部填充区域 -->
+                        <div class="empty-padding"></div>
+
+                        <div
+                                v-for="(item, index) in options"
+                                :key="index"
+                                class="option-item"
+                                :class="{ selected: index === selectedIndex }"
+                                :ref="`option_${index}`"
+                                @click="scrollToIndex(index)"
+                        >
+                            <span class="option-content">{{ item }}</span>
+                        </div>
+
+                        <!-- 底部填充区域 -->
+                        <div class="empty-padding"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </van-popup>
+
+    <div class="footer">
+        Vue2 + Vant2 移动端Picker简洁文字选中方案 © 2023
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                showPicker: false,
+                options: [],
+                selectedIndex: 0,
+                selectedValue: '',
+                translateY: 0,
+                startY: 0,
+                startTranslate: 0,
+                isDragging: false,
+                velocity: 0,
+                lastY: 0,
+                lastTime: 0,
+                containerHeight: 320,
+                optionHeights: [],
+                centerY: 0, // 容器中心点Y坐标
+            };
+        },
+        computed: {
+            maxTranslate() {
+                if (this.optionHeights.length === 0) return 0;
+
+                // 计算总高度
+                const totalHeight = this.optionHeights.reduce((sum, height) => sum + height, 0);
+
+                // 调整填充区域计算，确保可以滚动到所有选项
+                return Math.max(0, totalHeight + 200 - this.containerHeight);
+            }
+        },
+        watch: {
+            showPicker(val) {
+                if (val) {
+                    // 使用setTimeout确保DOM已完全渲染
+                    setTimeout(() => {
+                        this.$nextTick(() => {
+                            this.containerHeight = this.$refs.scrollContainer.clientHeight;
+                            this.centerY = this.containerHeight / 2;
+                            this.calculateOptionHeights();
+                            this.scrollToIndex(this.selectedIndex, false);
+                        });
+                    }, 100);
+                }
+            }
+        },
+        mounted() {
+            this.generateOptions();
+        },
+        methods: {
+            generateOptions() {
+                const prefixes = ['项目', '任务', '产品', '方案', '服务', '功能'];
+                const adjectives = ['重要的', '紧急的', '创新的', '优化的', '高效的', '智能的'];
+                const nouns = ['开发计划', '设计方案', '实施方案', '解决方案', '升级方案', '优化建议'];
+                const suffixes = ['(2023年Q3)', '(需尽快完成)', '(高优先级)', '(跨部门协作)', '(长期规划)'];
+
+                this.options = [];
+
+                for (let i = 1; i <= 30; i++) {
+                    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+                    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+                    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+                    const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+
+                    // 生成长度不同的选项
+                    let lengthModifier = '';
+                    const lengthType = i % 5;
+                    if (lengthType === 0) {
+                        lengthModifier = '这是一个特别长的选项文本用于测试显示效果，确保能够展示多行文本的完整显示：';
+                    } else if (lengthType === 1) {
+                        lengthModifier = '超长文本选项，用于测试选择器的显示能力和文本截断功能：';
+                    }
+
+                    const text = `${lengthModifier}${prefix}${i}：${adjective}${noun} ${suffix}`;
+                    this.options.push(text);
+                }
+
+                this.selectedIndex = 0;
+                this.selectedValue = this.options[0];
+            },
+
+            calculateOptionHeights() {
+                this.optionHeights = [];
+                // 确保DOM已更新
+                this.$nextTick(() => {
+                    for (let i = 0; i < this.options.length; i++) {
+                        const el = this.$refs[`option_${i}`]?.[0];
+                        if (el) {
+                            // 临时设置为选中状态以获取实际高度
+                            const wasSelected = el.classList.contains('selected');
+                            el.classList.add('selected');
+                            // 强制重绘
+                            el.offsetHeight;
+                            const height = el.offsetHeight;
+                            this.optionHeights.push(height);
+                            if (!wasSelected) {
+                                el.classList.remove('selected');
+                            }
+                        } else {
+                            // 默认高度
+                            this.optionHeights.push(52);
+                        }
+                    }
+                });
+            },
+
+            getOptionPosition(index) {
+                let position = 0;
+                for (let i = 0; i < index; i++) {
+                    position += this.optionHeights[i] || 52;
+                }
+                return position;
+            },
+
+            scrollToIndex(index, animate = true) {
+                if (index < 0 || index >= this.options.length) return;
+
+                // 强制更新高度信息
+                this.calculateOptionHeights();
+
+                const optionPosition = this.getOptionPosition(index);
+                const optionHeight = this.optionHeights[index] || 52;
+
+                // 计算目标位置：使选中项中心与容器中心完全对齐
+                const targetY = -(optionPosition + optionHeight/2 - this.centerY);
+
+                // 边界检查 - 调整边界值，确保所有选项可以选中
+                const boundedY = Math.max(-this.maxTranslate, Math.min(150, targetY));
+
+                if (animate) {
+                    this.animateScroll(boundedY);
+                } else {
+                    this.translateY = boundedY;
+                    this.selectedIndex = index;
+                }
+            },
+
+            animateScroll(targetY) {
+                const startY = this.translateY;
+                const startTime = Date.now();
+                const duration = 300;
+
+                const animate = () => {
+                    const now = Date.now();
+                    const progress = Math.min(1, (now - startTime) / duration);
+
+                    const easeProgress = this.easeOutCubic(progress);
+                    this.translateY = startY + (targetY - startY) * easeProgress;
+
+                    // 更新选中索引
+                    this.updateSelectedIndex();
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        this.translateY = targetY;
+                        this.updateSelectedIndex();
+                    }
+                };
+
+                requestAnimationFrame(animate);
+            },
+
+            // 优化选中项计算，确保所有选项都能被选中
+            updateSelectedIndex() {
+                const currentPosition = -this.translateY;
+
+                let accumulatedHeight = 0;
+                let closestIndex = 0;
+                let minDistance = Infinity;
+
+                // 遍历所有选项，找到最接近容器中心的选项
+                for (let i = 0; i < this.options.length; i++) {
+                    const optionHeight = this.optionHeights[i] || 52;
+                    const optionCenter = accumulatedHeight + optionHeight / 2;
+                    const distance = Math.abs(optionCenter - (currentPosition + this.centerY));
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestIndex = i;
+                    }
+
+                    accumulatedHeight += optionHeight;
+                }
+
+                // 移除前几项的特殊限制，使用统一的计算方式
+                if (closestIndex !== this.selectedIndex) {
+                    this.selectedIndex = closestIndex;
+                }
+            },
+
+            easeOutCubic(t) {
+                return 1 - Math.pow(1 - t, 3);
+            },
+
+            onTouchStart(e) {
+                this.isDragging = true;
+                this.startY = e.touches[0].clientY;
+                this.startTranslate = this.translateY;
+                this.velocity = 0;
+                this.lastY = this.startY;
+                this.lastTime = Date.now();
+            },
+
+            onTouchMove(e) {
+                if (!this.isDragging) return;
+
+                e.preventDefault();
+
+                const currentY = e.touches[0].clientY;
+                const deltaY = currentY - this.startY;
+
+                let newTranslateY = this.startTranslate + deltaY;
+
+                // 边界限制（带弹性效果）
+                if (newTranslateY > 150) { // 增加顶部弹性区域
+                    newTranslateY = 150 + (newTranslateY - 150) * 0.2;
+                } else if (newTranslateY < -this.maxTranslate) {
+                    const overflow = -this.maxTranslate - newTranslateY;
+                    newTranslateY = -this.maxTranslate + overflow * 0.3;
+                }
+
+                this.translateY = newTranslateY;
+                this.updateSelectedIndex();
+
+                // 计算速度
+                const now = Date.now();
+                const deltaTime = now - this.lastTime;
+
+                if (deltaTime > 0) {
+                    const deltaY = currentY - this.lastY;
+                    this.velocity = deltaY / deltaTime;
+                    this.lastY = currentY;
+                    this.lastTime = now;
+                }
+            },
+
+            onTouchEnd() {
+                if (!this.isDragging) return;
+
+                this.isDragging = false;
+
+                // 惯性滚动
+                if (Math.abs(this.velocity) > 0.05) {
+                    const momentumRatio = 15;
+                    const momentumDistance = this.velocity * momentumRatio;
+                    let targetY = this.translateY + momentumDistance;
+
+                    // 限制在边界内
+                    targetY = Math.max(-this.maxTranslate, Math.min(150, targetY));
+
+                    // 滚动到最近的选项
+                    this.animateScroll(targetY);
+                } else {
+                    // 直接滚动到最接近的选项
+                    this.scrollToIndex(this.selectedIndex);
+                }
+            },
+
+            confirmSelection() {
+                this.selectedValue = this.options[this.selectedIndex];
+                this.showPicker = false;
+            },
+
+            resetSelection() {
+                this.selectedIndex = 0;
+                this.selectedValue = this.options[0];
+                if (this.showPicker) {
+                    this.scrollToIndex(0);
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>
