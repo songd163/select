@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>用户列表多选功能</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@2.12/lib/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vant@2.12/lib/vant.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: #333;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0 30px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1989fa;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .demo-section {
+            padding: 25px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .demo-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .description {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #555;
+            margin: 15px 0;
+            line-height: 1.8;
+        }
+
+        /* 已选用户区域优化 */
+        .selected-users {
+            margin-top: 20px;
+        }
+
+        .selected-users-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .selected-count {
+            font-size: 14px;
+            color: #1989fa;
+            font-weight: 500;
+        }
+
+        .clear-all {
+            font-size: 14px;
+            color: #ff4d4f;
+            cursor: pointer;
+        }
+
+        .selected-list {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 12px;
+            min-height: 60px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .selected-tag {
+            background: white;
+            border: 1px solid #e5e6eb;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .selected-tag:hover {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .remove-tag {
+            margin-left: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #c9cdcf;
+            transition: color 0.2s ease;
+        }
+
+        .remove-tag:hover {
+            color: #ff4d4f;
+        }
+
+        .no-selected {
+            color: #969799;
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .custom-picker {
+            width: 100%;
+            background: white;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            background: white;
+        }
+
+        .picker-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .picker-action {
+            font-size: 16px;
+            background: none;
+            border: none;
+            padding: 5px 15px;
+            color: #1989fa;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .picker-action.cancel {
+            color: #969799;
+        }
+
+        .search-box {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* 弹窗内的已选标签区域 */
+        .popup-selected-tags {
+            padding: 0 15px 15px;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .popup-selected-tags-header {
+            font-size: 14px;
+            color: #969799;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .popup-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .popup-tag {
+            background: #f2f3f5;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .popup-tag-remove {
+            margin-left: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #909399;
+        }
+
+        .popup-tag-remove:hover {
+            color: #ff4d4f;
+        }
+
+        .select-controls {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+        }
+
+        .select-all {
+            display: flex;
+            align-items: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .action-btn {
+            color: #1989fa;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .option-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 15px;
+            max-height: calc(50vh - 120px); /* 调整高度，为标签区域留出空间 */
+        }
+
+        .option-item {
+            padding: 15px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .option-item:hover {
+            background-color: #f7f8fa;
+        }
+
+        .option-text {
+            flex: 1;
+            margin-left: 10px;
+            word-break: break-word;
+        }
+
+        .option-info {
+            font-size: 12px;
+            color: #969799;
+            margin-top: 3px;
+        }
+
+        .empty-tips {
+            text-align: center;
+            padding: 30px;
+            color: #969799;
+            font-size: 14px;
+        }
+
+        .search-hint {
+            text-align: center;
+            padding: 40px 20px;
+            color: #969799;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .search-hint i {
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: inline-block;
+            color: #c9cdcf;
+        }
+
+        .van-button {
+            border-radius: 8px;
+            height: 44px;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+
+        .van-button--primary {
+            background: linear-gradient(to right, #1989fa, #3296fa);
+            border: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #7d7e80;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+
+            .demo-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <h1>用户列表多选功能</h1>
+        <p>高效选择和管理多个用户</p>
+    </div>
+
+    <div class="container">
+        <div class="demo-section">
+            <div class="demo-title">用户选择器</div>
+            <div class="description">
+                系统用户数量较多，默认不显示用户列表。请先输入关键词搜索用户，然后从结果中选择。
+                已选择的用户会显示在下方，支持单独删除或清空全部。
+            </div>
+
+            <van-button type="primary" block @click="showPicker = true">选择用户</van-button>
+
+            <!-- 主界面已选用户区域 -->
+            <div class="selected-users" v-if="selectedUsers.length > 0">
+                <div class="selected-users-header">
+                    <div class="demo-title" style="margin: 0;">已选用户</div>
+                    <div class="selected-count">{{ selectedUsers.length }}人</div>
+                    <div class="clear-all" @click="clearAllUsers">清空</div>
+                </div>
+                <div class="selected-list">
+                    <div class="selected-tag" v-for="(user, index) in selectedUsers" :key="user.id">
+                        {{ user.name }}
+                        <span class="remove-tag" @click="removeUser(user)">×</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主界面未选择任何用户时显示 -->
+            <div v-else class="selected-users">
+                <div class="demo-title">已选用户</div>
+                <div class="selected-list">
+                    <div class="no-selected">尚未选择任何用户</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义多选选择器弹窗 -->
+    <van-popup
+            v-model="showPicker"
+            position="bottom"
+            :style="{ height: '80%' }"
+            round
+            @close="handlePopupClose"
+    >
+        <div class="custom-picker">
+            <div class="picker-header">
+                <button class="picker-action cancel" @click="showPicker = false">取消</button>
+                <div class="picker-title">选择用户</div>
+                <button class="picker-action confirm" @click="confirmSelection">完成</button>
+            </div>
+
+            <div class="search-box">
+                <van-search
+                        v-model="searchKeyword"
+                        placeholder="输入用户名或邮箱搜索..."
+                        shape="round"
+                        @input="handleSearch"
+                />
+            </div>
+
+            <!-- 弹窗内的已选标签区域 - 新增部分 -->
+            <div class="popup-selected-tags" v-if="selectedUsers.length > 0">
+                <div class="popup-selected-tags-header">
+                    <span>已选 {{ selectedUsers.length }} 人</span>
+                    <span class="action-btn" @click="clearAllUsers">清空全部</span>
+                </div>
+                <div class="popup-tags-container">
+                    <div class="popup-tag" v-for="(user, index) in selectedUsers" :key="user.id">
+                        {{ user.name }}
+                        <span class="popup-tag-remove" @click="removeUser(user)">×</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="select-controls" v-if="filteredUsers.length > 0" style="display: none">
+                <div class="select-all">
+                    <van-checkbox v-model="allSelected" @click="toggleSelectAll">
+                        {{ allSelected ? '取消全选' : '全选' }}
+                    </van-checkbox>
+                </div>
+                <div class="action-buttons">
+                    <div class="action-btn" @click="invertSelection">反选</div>
+                    <div class="action-btn" @click="selectNone">清空当前</div>
+                </div>
+            </div>
+
+            <div class="option-list">
+                <!-- 未输入搜索关键词时显示提示 -->
+                <template v-if="!searchKeyword">
+                    <div class="search-hint">
+                        <i class="van-icon van-icon-search"></i>
+                        <p>请输入关键词搜索用户</p>
+                        <p>支持用户名、邮箱搜索</p>
+                    </div>
+                </template>
+
+                <!-- 搜索结果展示 -->
+                <template v-else-if="filteredUsers.length > 0">
+                    <div
+                            v-for="(user, index) in filteredUsers"
+                            :key="user.id"
+                            class="option-item"
+                            @click="toggleUserSelection(user)"
+                    >
+                        <van-checkbox :value="isUserSelected(user)" />
+                        <div class="option-text">
+                            <div>{{ user.name }}</div>
+                            <div class="option-info">{{ user.email }}</div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- 无搜索结果时显示 -->
+                <div v-else class="empty-tips">
+                    <i class="van-icon van-icon-info-o" style="margin-right: 5px;"></i>
+                    未找到匹配的用户
+                </div>
+            </div>
+        </div>
+    </van-popup>
+
+    <div class="footer">
+        用户多选组件 © 2023
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                showPicker: false,
+                users: [], // 所有用户数据
+                filteredUsers: [], // 搜索过滤后的用户
+                selectedUsers: [], // 已选择的用户
+                searchKeyword: '',
+                allSelected: false,
+                currentSearchSelections: [] // 临时存储当前搜索结果中选中的用户
+            };
+        },
+        computed: {
+            // 已选用户数量
+            selectedCount() {
+                return this.selectedUsers.length;
+            }
+        },
+        watch: {
+            // 监听全选状态变化
+            allSelected(newVal) {
+                if (!this.searchKeyword) return;
+
+                if (newVal) {
+                    // 添加当前搜索结果中未被选中的用户
+                    this.filteredUsers.forEach(user => {
+                        if (!this.isUserSelected(user)) {
+                            this.selectedUsers.push(user);
+                            this.currentSearchSelections.push(user.id);
+                        }
+                    });
+                } else {
+                    // 取消当前搜索结果中的所有选中用户
+                    this.filteredUsers.forEach(user => {
+                        if (this.isUserSelected(user)) {
+                            this.selectedUsers = this.selectedUsers.filter(u => u.id !== user.id);
+                            this.currentSearchSelections = this.currentSearchSelections.filter(id => id !== user.id);
+                        }
+                    });
+                }
+            },
+
+            // 监听搜索关键词变化
+            searchKeyword(newVal) {
+                if (newVal) {
+                    this.filterUsers(newVal);
+                } else {
+                    this.filteredUsers = [];
+                    this.allSelected = false;
+                    this.currentSearchSelections = [];
+                }
+            }
+        },
+        mounted() {
+            // 生成模拟用户数据
+            this.generateUserList();
+        },
+        methods: {
+            // 生成模拟用户数据
+            generateUserList() {
+                const firstNames = ['张', '李', '王', '赵', '刘', '陈', '杨', '黄', '周', '吴'];
+                const lastNames = ['伟', '芳', '娜', '秀英', '敏', '静', '强', '磊', '军', '洋'];
+                const domains = ['example.com', 'company.org', 'work.net', 'mail.cn'];
+
+                this.users = [];
+
+                for (let i = 1; i <= 200; i++) {
+                    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                    const name = `${firstName}${lastName}${i}`;
+                    const domain = domains[Math.floor(Math.random() * domains.length)];
+                    const email = `${name.toLowerCase()}@${domain}`;
+
+                    this.users.push({
+                        id: i,
+                        name: name,
+                        email: email,
+                        department: `部门${Math.floor(Math.random() * 10) + 1}`
+                    });
+                }
+            },
+
+            // 根据关键词过滤用户
+            filterUsers(keyword) {
+                if (!keyword) {
+                    this.filteredUsers = [];
+                    return;
+                }
+
+                const lowerKeyword = keyword.toLowerCase();
+                this.filteredUsers = this.users.filter(user =>
+                    user.name.toLowerCase().includes(lowerKeyword) ||
+                    user.email.toLowerCase().includes(lowerKeyword) ||
+                    user.department.toLowerCase().includes(lowerKeyword)
+                );
+
+                // 恢复当前搜索结果中已选中的用户状态
+                this.updateCurrentSearchSelections();
+                // 更新全选状态
+                this.updateAllSelectedStatus();
+            },
+
+            // 更新当前搜索结果中的选中状态
+            updateCurrentSearchSelections() {
+                this.currentSearchSelections = this.filteredUsers
+                    .filter(user => this.isUserSelected(user))
+                    .map(user => user.id);
+            },
+
+            // 更新全选状态
+            updateAllSelectedStatus() {
+                if (this.filteredUsers.length === 0) {
+                    this.allSelected = false;
+                    return;
+                }
+
+                this.allSelected = this.filteredUsers.every(user =>
+                    this.isUserSelected(user)
+                );
+            },
+
+            // 检查用户是否已选中
+            isUserSelected(user) {
+                return this.selectedUsers.some(u => u.id === user.id);
+            },
+
+            // 切换用户选择状态
+            toggleUserSelection(user) {
+                if (this.isUserSelected(user)) {
+                    // 取消选择
+                    this.selectedUsers = this.selectedUsers.filter(u => u.id !== user.id);
+                    this.currentSearchSelections = this.currentSearchSelections.filter(id => id !== user.id);
+                } else {
+                    // 选中用户
+                    this.selectedUsers.push(user);
+                    this.currentSearchSelections.push(user.id);
+                }
+
+                // 更新全选状态
+                this.updateAllSelectedStatus();
+            },
+
+            // 处理搜索
+            handleSearch() {
+                this.filterUsers(this.searchKeyword);
+            },
+
+            // 切换全选
+            toggleSelectAll() {
+                this.allSelected = !this.allSelected;
+            },
+
+            // 反选当前搜索结果
+            invertSelection() {
+                this.filteredUsers.forEach(user => {
+                    this.toggleUserSelection(user);
+                });
+            },
+
+            // 取消当前搜索结果中的所有选择
+            selectNone() {
+                this.filteredUsers.forEach(user => {
+                    if (this.isUserSelected(user)) {
+                        this.toggleUserSelection(user);
+                    }
+                });
+            },
+
+            // 确认选择
+            confirmSelection() {
+                this.showPicker = false;
+            },
+
+            // 移除已选用户
+            removeUser(user) {
+                this.selectedUsers = this.selectedUsers.filter(u => u.id !== user.id);
+                this.updateCurrentSearchSelections();
+                this.updateAllSelectedStatus();
+            },
+
+            // 清空所有已选用户
+            clearAllUsers() {
+                if (this.selectedUsers.length === 0) return;
+
+                this.$dialog.confirm({
+                    title: '确认清空',
+                    message: `确定要移除所有${this.selectedUsers.length}位已选用户吗？`
+                }).then(() => {
+                    this.selectedUsers = [];
+                    this.currentSearchSelections = [];
+                    this.allSelected = false;
+                });
+            },
+
+            // 处理弹窗关闭
+            handlePopupClose() {
+                // 清空搜索关键词，下次打开重新搜索
+                this.searchKeyword = '';
+                this.filteredUsers = [];
+                this.allSelected = false;
+                this.currentSearchSelections = [];
+            }
+        }
+    });
+</script>
+</body>
+</html>
